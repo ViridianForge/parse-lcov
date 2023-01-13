@@ -1,11 +1,12 @@
 /*
 Copyright © 2023 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
 import (
+	"bufio"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -22,6 +23,28 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("genReport called")
+		// Open file
+		filename := "/home/vforge/Downloads/parts.info"
+		// Read in chunks
+		file, err := os.Open(filename)
+		// Print something
+		if err != nil {
+			fmt.Printf("Could not open the file due to this %s error \n", err)
+		}
+		fileScanner := bufio.NewScanner(file)
+		fileScanner.Split(bufio.ScanLines)
+		var fileLines []string
+
+		for fileScanner.Scan() {
+			fileLines = append(fileLines, fileScanner.Text())
+		}
+		if err = file.Close(); err != nil {
+			fmt.Printf("Could not close the file due to this %s error \n", err)
+		}
+
+		for key, value := range fileLines {
+			fmt.Printf("line %v : %s \n", key, value)
+		}
 	},
 }
 

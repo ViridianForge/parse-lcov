@@ -22,12 +22,26 @@ THE SOFTWARE.
 package cmd
 
 import (
+	"bufio"
+	"fmt"
 	"os"
+	"strconv"
+	"strings"
 
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
 
-
+type record struct {
+	testName      string
+	sourceFile    string
+	linesHit      int
+	lineCount     int
+	functionsHit  int
+	functionCount int
+	branchesHit   int
+	branchCount   int
+}
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -41,7 +55,67 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println("genReport called")
+		// Open file
+		filename := "/home/vforge/Downloads/parts.info"
+		file, err := os.Open(filename)
+		if err != nil {
+			fmt.Printf("Could not open the file due to this %s error \n", err)
+		}
+		// Create buffered scanner
+		fileScanner := bufio.NewScanner(file)
+		fileScanner.Split(bufio.ScanLines)
+		var fileLines []string
+
+		// Read in lines from file
+		for fileScanner.Scan() {
+			// Can probably handle parsing here
+			fileLines = append(fileLines, fileScanner.Text())
+		}
+		if err = file.Close(); err != nil {
+			fmt.Printf("Could not close the file due to this %s error \n", err)
+		}
+
+		var records = []record{}
+
+		for _, value := range fileLines {
+			curRecord := record{}
+			contents := strings.Split(value, ":")
+			switch code := contents[0]; code {
+			case "TN":
+				curRecord.testName = contents[1]
+			case "SF":
+				curRecord.sourceFile = contents[1]
+			case "FNF":
+				curRecord.functionCount, _ = strconv.Atoi(contents[1])
+			case "FNH":
+				curRecord.functionsHit, _ = strconv.Atoi(contents[1])
+			case "LF":
+				curRecord.lineCount, _ = strconv.Atoi(contents[1])
+			case "LH":
+				curRecord.linesHit, _ = strconv.Atoi(contents[1])
+			case "BRF":
+				curRecord.branchCount, _ = strconv.Atoi(contents[1])
+			case "BRH":
+				curRecord.branchesHit, _ = strconv.Atoi(contents[1])
+			default:
+				fmt.Print(value)
+			}
+			records = append(records, curRecord)
+		}
+
+		tw := table.NewWriter()
+		tw.AppendHeader(table.Row{"element", "hits", "count", "percentage"})
+		tw.AppendRows([]table.Row{
+			{"lines", "75", "100", "75%"},
+			{"functions", "10", "15", "66%"},
+			{"branches", "12", "24", "50%"},
+		})
+		tw.SetIndexColumn(1)
+		tw.SetTitle("Sample table")
+		fmt.Println(tw.Render())
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -64,5 +138,3 @@ func init() {
 	// when this action is called directly.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
-
-

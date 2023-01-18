@@ -77,10 +77,15 @@ to quickly create a Cobra application.`,
 			fmt.Printf("Could not close the file due to this %s error \n", err)
 		}
 
-		var records = []record{}
+		curRecord := record{}
+
+		tw := table.NewWriter()
+		tw.AppendHeader(table.Row{
+			"Test Name", "Source File", "Lines Hit", "Line Count", "Lines Covered",
+			"Functions Hit", "Function Count", "Functions Covered", "Branches Hit", "Branch Count", "Branches Covered",
+		})
 
 		for _, value := range fileLines {
-			curRecord := record{}
 			contents := strings.Split(value, ":")
 			switch code := contents[0]; code {
 			case "TN":
@@ -99,21 +104,24 @@ to quickly create a Cobra application.`,
 				curRecord.branchCount, _ = strconv.Atoi(contents[1])
 			case "BRH":
 				curRecord.branchesHit, _ = strconv.Atoi(contents[1])
+			case "end_of_record":
+				tw.AppendRow(table.Row{
+					curRecord.testName,
+					curRecord.sourceFile,
+					curRecord.linesHit,
+					curRecord.lineCount,
+					curRecord.functionsHit,
+					curRecord.functionCount,
+					curRecord.branchesHit,
+					curRecord.branchCount,
+				})
+				curRecord = record{}
 			default:
-				fmt.Print(value)
+				fmt.Println(value)
 			}
-			records = append(records, curRecord)
 		}
-
-		tw := table.NewWriter()
-		tw.AppendHeader(table.Row{"element", "hits", "count", "percentage"})
-		tw.AppendRows([]table.Row{
-			{"lines", "75", "100", "75%"},
-			{"functions", "10", "15", "66%"},
-			{"branches", "12", "24", "50%"},
-		})
 		tw.SetIndexColumn(1)
-		tw.SetTitle("Sample table")
+		tw.SetTitle("Sample Coverage Report")
 		fmt.Println(tw.Render())
 	},
 }

@@ -24,6 +24,7 @@ package cmd
 import (
 	"bufio"
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -43,23 +44,28 @@ type record struct {
 	branchCount   int
 }
 
+var lcovReport string
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "parse-lcov",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
+	Short: "Parses an lcov report into a human readable format",
+	Long: `parse-lcov is a utility to transform a report in lcov format into
+a number of human readable formats.
+- Formatted Text
+- Delimited Files (future)
+- HTML Table (future)
+- Markdown (future)
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+Examples:
+- ./parse-lcov -r report.info -- Prints the lcov to stdout as text
+- ./parse-lcov -r report.info -f csv -- Prints the lcov to stdout as a csv
+`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("genReport called")
 		// Open file
-		filename := "/home/vforge/Downloads/parts.info"
-		file, err := os.Open(filename)
+		file, err := os.Open(lcovReport)
 		if err != nil {
 			fmt.Printf("Could not open the file due to this %s error \n", err)
 		}
@@ -105,23 +111,43 @@ to quickly create a Cobra application.`,
 			case "BRH":
 				curRecord.branchesHit, _ = strconv.Atoi(contents[1])
 			case "end_of_record":
+				// Calculate coverage percentages
+				linesCovered := "-"
+				functionsCovered := "-"
+				branchesCovered := "-"
+
+				if curRecord.lineCount > 0 {
+					linesCovered = fmt.Sprintf("%.2f %%", math.Round((float64(curRecord.linesHit)/float64(curRecord.lineCount))*100))
+				}
+
+				if curRecord.functionCount > 0 {
+					functionsCovered = fmt.Sprintf("%.2f %%", math.Round((float64(curRecord.functionsHit)/float64(curRecord.functionCount))*100))
+				}
+
+				if curRecord.branchCount > 0 {
+					branchesCovered = fmt.Sprintf("%.2f %%", math.Round((float64(curRecord.branchesHit)/float64(curRecord.branchCount))*100))
+				}
+
 				tw.AppendRow(table.Row{
 					curRecord.testName,
 					curRecord.sourceFile,
 					curRecord.linesHit,
 					curRecord.lineCount,
+					linesCovered,
 					curRecord.functionsHit,
 					curRecord.functionCount,
+					functionsCovered,
 					curRecord.branchesHit,
 					curRecord.branchCount,
+					branchesCovered,
 				})
+				tw.AppendSeparator()
 				curRecord = record{}
 			default:
-				fmt.Println(value)
 			}
 		}
 		tw.SetIndexColumn(1)
-		tw.SetTitle("Sample Coverage Report")
+		tw.SetTitle(lcovReport)
 		fmt.Println(tw.Render())
 	},
 }
@@ -144,5 +170,6 @@ func init() {
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.Flags().StringVarP(&lcovReport, "report", "r", "", "lcov report")
+	rootCmd.MarkFlagRequired("report")
 }
